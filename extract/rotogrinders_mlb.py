@@ -3,9 +3,10 @@ import urllib2
 from data.player import Player
 from bs4 import BeautifulSoup
 from data.team import Team
+from extract.rotogrinders import Rotogrinders
 
 
-class RotogrindersMLB():
+class RotogrindersMLB(Rotogrinders):
 
     @staticmethod
     def __get_salary_from_element(element):
