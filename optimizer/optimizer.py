@@ -8,6 +8,7 @@ NHL_CONSTRAINTS = {
     'C': 2,
     'D': 2,
     'G': 1,
+    'num_players': 9,
     'max_salary': 55000
 }
 
@@ -18,6 +19,14 @@ NBA_CONSTRAINTS = {
     'SF': 2,
     'PF': 2,
     'C': 1,
+    'num_players': 9,
+    'max_salary': 60000
+}
+
+NFL_SINGLE_CONSTRAINTS = {
+    'MVP': 1,
+    'FLEX': 4,
+    'num_players': 5,
     'max_salary': 60000
 }
 
@@ -29,6 +38,7 @@ NFL_CONSTRAINTS = {
     'TE': 1,
     'K': 1,
     'D': 1,
+    'num_players': 9,
     'max_salary': 60000
 }
 
@@ -41,6 +51,7 @@ MLB_CONSTRAINTS = {
     'P': 1,
     'SS': 1,
     'C': 1,
+    'num_players': 9,
     'max_salary': 35000
 }
 
@@ -50,6 +61,7 @@ def get_constraints(game):
         'NBA': NBA_CONSTRAINTS,
         'NHL': NHL_CONSTRAINTS,
         'NFL': NFL_CONSTRAINTS,
+        'NFL_SINGLE': NFL_SINGLE_CONSTRAINTS,
         'MLB': MLB_CONSTRAINTS
     }[game]
 
@@ -86,20 +98,27 @@ class Optimizer(object):
         # Formulate variables
         position_variables = defaultdict(list)
         prob = LpProblem("roster", LpMaximize)
+        name_var = defaultdict(list)
         for player in self.players:
             if (not player.name) or (not player.salary) or \
                     (not player.projected_points):
                 continue
             players_by_key[player.key] = player
             var = LpVariable(player.key, 0, 1, cat='Integer')
+            name_var[player.name].append(var)
 
             # Create all binary variables on selection of players
             position_variables[player.position].append(var)
 
+        # Create the constraint that each player can only play in up to one
+		# position
+        for name, player_vars in name_var.iteritems():
+            prob += sum([player_var for player_var in player_vars]) <= 1.0
+
         # Create the constraints on number of players per position
         all_vars = []
         for key, bound in self.constraints.iteritems():
-            if key != 'max_salary':
+            if key != 'max_salary' and key != 'num_players':
                 prob += sum(
                     player_var for player_var in
                     position_variables[key]) == bound
@@ -148,7 +167,7 @@ class Optimizer(object):
             solutions.append((selected_players, value(prob.objective)))
 
             # Add the constraint that the next solution must be different
-            prob += lpSum(selected_variables) <= 7
+            prob += lpSum(selected_variables) <= self.constraints['num_players'] - 1
 
         # Return all solutions with respective objective function values
         return solutions

@@ -15,7 +15,7 @@ class Player():
 
     @property
     def key(self):
-        return ''.join(c for c in '{}_{}'.format(self.team, self.name)
+        return ''.join(c for c in '{}_{}_{}'.format(self.team, self.name, self.position)
                        if c.isalpha() or c == '_')
 
     def __str__(self):

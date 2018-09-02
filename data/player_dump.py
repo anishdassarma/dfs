@@ -32,8 +32,8 @@ def print_all_players(player_list, SEP='\t'):
             player.team.name,
             player.salary,
             player.position,
-            player.projected_points,
-            player.projected_points,
+            player.floor_projection,
+            player.ceiling_projection,
             player.projected_points,
             value,
             player.lineup_order
