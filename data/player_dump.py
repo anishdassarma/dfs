@@ -18,7 +18,7 @@ def print_all_players(player_list, SEP='\t'):
                 'pos',
                 'floor',
                 'ceiling',
-                'avg',
+                'projected points',
                 'value (proj/sal)',
                 'lineup_order'
             ])

@@ -12,6 +12,7 @@ from extract.rotogrinders_mlb import RotogrindersMLB
 from extract.rotogrinders_schedule import load_teams
 from data.player_dump import print_all_players
 from optimizer.optimizer import TeamCountConstraints
+import random
 
 
 
@@ -47,6 +48,10 @@ def __all_players_from_fd_single_file(fname, game_type):
             player_name = u'{} {}'.format(parts[2], parts[3])
             salary = float(parts[7])
             pos_mult = {'FLEX': 1.0, 'MVP': 1.5}
+            floor = float(parts[14])
+            ceiling = float(parts[16])
+            projected = float(parts[15])
+            random_multiplier = random.random()
             for position, multiplier in pos_mult.iteritems():
                 player = Player()
                 player.name = player_name
@@ -55,14 +60,14 @@ def __all_players_from_fd_single_file(fname, game_type):
 				    parts[7] and parts[7] != 'None' else Player.DEFAULT_SALARY
                 player.position = position
                 # Player point projection
-                player.floor_projection = float(parts[14]) * multiplier
-                player.ceiling_projection = float(parts[16]) * multiplier
-                player.projected_points = float(parts[15]) * multiplier
+                player.floor_projection = floor * multiplier
+                player.ceiling_projection = ceiling * multiplier
+                player.projected_points = projected * multiplier
 
-                # If gpp lineup take the ceiling projection
+                # If gpp lineup take random proj between floor and ceiling projection
                 assert game_type in [GameType.CASH, GameType.GPP]
                 if game_type == GameType.GPP:
-                    player.projected_points = player.ceiling_projection
+                    player.projected_points = multiplier * (floor + (ceiling - floor) * random_multiplier)
     
                 player.value = player.projected_points / player.salary
                 players.append(player)
@@ -217,8 +222,8 @@ def __fade_players(args):
         players.extend(fade_arg)
     return players
 
-
 if __name__ == "__main__":
+
     # Get Players from rotolink
     game = 'NFL_SINGLE'
 
@@ -248,32 +253,60 @@ if __name__ == "__main__":
 
     SEP = ','
 
-    '''
-    players = func(rotolink)
-    players = __all_players_from_file(
-        'nhl.txt', ROTO_FORMAT,
-        SEP=SEP
-    )
-    '''
-    players = __all_players_from_file(
-        '/Users/anish_dassarma/dfs/players/week1/9-6-ATL-PHI-proj.csv', FD_SINGLE_FORMAT,
-        SEP=SEP
-    )
-    #print_all_players(players, SEP=SEP)
+    num_solutions = 20
+    #game_type = GameType.CASH
+    game_type = GameType.GPP
+    #filename = '/Users/anishdassarma/code/dfs/players/IND-HOU.csv'
+    filename = '/Users/anishdassarma/code/dfs/players/SEA-DAL.csv'
 
-    # Get all the teams that will be used today
-    teams_dict = load_teams(game, args)
-    teams = __team_acronmy_expansion(__get_teams_to_use(teams_dict, args))
-    exclude_teams = __team_acronmy_expansion(__get_teams_to_exclude(teams_dict, args))
-    team_constraints = __get_team_constraints(args)
-
-    # Restrict players to required set of teams
-    if teams:
-        restricted_players = restrict_players_to_teams(
-            players, teams, exclude_teams)
-    else:
-        restricted_players = players
-
-    #print " ================================================== ", len(restricted_players)
-    Optimizer(restricted_players, constraints=get_constraints(game), team_constraints=team_constraints).solve(
-        num_solutions=5)
+    if game_type == GameType.CASH:
+        players = __all_players_from_file(
+            filename, FD_SINGLE_FORMAT,
+			game_type=game_type,
+            SEP=SEP
+        )
+        print_all_players(players, SEP=SEP)
+    
+        # Get all the teams that will be used today
+        teams_dict = load_teams(game, args)
+        teams = __team_acronmy_expansion(__get_teams_to_use(teams_dict, args))
+        exclude_teams = __team_acronmy_expansion(__get_teams_to_exclude(teams_dict, args))
+        team_constraints = __get_team_constraints(args)
+    
+        # Restrict players to required set of teams
+        if teams:
+            restricted_players = restrict_players_to_teams(
+                players, teams, exclude_teams)
+        else:
+            restricted_players = players
+    
+        #print " ================================================== ", len(restricted_players)
+        Optimizer(restricted_players, constraints=get_constraints(game), team_constraints=team_constraints).solve(
+            num_solutions=num_solutions)
+    elif game_type == GameType.GPP:
+        for i in range(num_solutions):
+            players = __all_players_from_file(
+                filename, FD_SINGLE_FORMAT,
+    			game_type=game_type,
+                SEP=SEP
+            )
+            #print_all_players(players, SEP=SEP)
+        
+            # Get all the teams that will be used today
+            teams_dict = load_teams(game, args)
+            teams = __team_acronmy_expansion(__get_teams_to_use(teams_dict, args))
+            exclude_teams = __team_acronmy_expansion(__get_teams_to_exclude(teams_dict, args))
+            team_constraints = __get_team_constraints(args)
+        
+            # Restrict players to required set of teams
+            if teams:
+                restricted_players = restrict_players_to_teams(
+                    players, teams, exclude_teams)
+            else:
+                restricted_players = players
+        
+            #print " ================================================== ", len(restricted_players)
+            Optimizer(restricted_players, constraints=get_constraints(game), team_constraints=team_constraints).solve(
+                num_solutions=2)
+	else:
+	    print "Done!"
